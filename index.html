@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國文課：兒時記趣 - 互動闖關 (v6 最終修正版)</title>
+    
+    <!-- 載入核心庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ink-black': '#2c2c2c',
+                        'paper-bg': '#fdfbf7',
+                        'tea-brown': '#8d6e63',
+                        'accent-gold': '#d4af37',
+                        'bamboo-green': '#556b2f',
+                        'vermilion': '#e34234',
+                    },
+                    fontFamily: {
+                        serif: ['"Noto Serif TC"', 'serif'],
+                    },
+                    backgroundImage: {
+                        'paper-texture': "url('https://www.transparenttextures.com/patterns/cream-paper.png')",
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'fadeIn': 'fadeIn 0.5s ease-in',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-5px)' },
+                        },
+                        fadeIn: {
+                            'from': { opacity: '0' },
+                            'to': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap');
+        body { 
+            font-family: 'Noto Serif TC', serif; 
+            background-color: #fdfbf7; 
+            color: #2c2c2c;
+            background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
+        }
+        .ink-border {
+            border: 2px solid #2c2c2c;
+            border-radius: 8px;
+            box-shadow: 4px 4px 0px #8d6e63;
+        }
+        .btn-classical {
+            background-color: #8d6e63;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer; /* 確保游標顯示為手指 */
+        }
+        .btn-classical:hover:not(:disabled) {
+            background-color: #5d4037;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-classical:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* 隱藏檔案上傳 input */
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root" class="min-h-screen flex items-center justify-center">
+        <div class="text-center text-gray-500 animate-pulse">
+            <h2 class="text-2xl mb-2">正在佈置書房...</h2>
+            <p>請稍候片刻</p>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // --- 圖示元件 ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        // --- 全身文人 NPC SVG ---
+        const NpcImage = () => (
+            <svg viewBox="0 0 100 160" className="w-32 h-48 mx-auto mb-2 drop-shadow-md">
+                <path d="M30,50 L20,140 L80,140 L70,50 Z" fill="#f5f5f5" stroke="#8d6e63" strokeWidth="2" />
+                <path d="M30,50 Q20,80 10,70 L25,55" fill="#f5f5f5" stroke="#8d6e63" strokeWidth="2" />
+                <path d="M70,50 Q80,80 90,70 L75,55" fill="#f5f5f5" stroke="#8d6e63" strokeWidth="2" />
+                <path d="M28,90 L72,90" stroke="#2c2c2c" strokeWidth="4" />
+                <rect x="40" y="70" width="20" height="40" fill="#fdfbf7" stroke="#8d6e63" strokeWidth="1" transform="rotate(-10 50 90)" />
+                <circle cx="50" cy="35" r="18" fill="#f5f5f5" stroke="#8d6e63" strokeWidth="2" />
+                <path d="M30,25 L70,25 L65,10 L35,10 Z" fill="#2c2c2c" />
+                <rect x="25" y="22" width="50" height="5" fill="#2c2c2c" />
+                <path d="M42,35 Q50,40 58,35" fill="none" stroke="#2c2c2c" strokeWidth="1" />
+                <circle cx="44" cy="30" r="2" fill="#2c2c2c" />
+                <circle cx="56" cy="30" r="2" fill="#2c2c2c" />
+                <text x="50" y="155" fontSize="10" textAnchor="middle" fill="#8d6e63" dy="15">老夫子</text>
+            </svg>
+        );
+
+        const DefaultShenFuImage = () => (
+            <svg viewBox="0 0 100 100" className="w-full h-full opacity-80">
+                <defs>
+                    <filter id="ink-wash">
+                        <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="3" result="noise"/>
+                        <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" />
+                    </filter>
+                </defs>
+                <rect width="100" height="100" fill="#fdfbf7" />
+                <path d="M30,80 Q50,90 70,80 L70,100 L30,100 Z" fill="#2c2c2c" filter="url(#ink-wash)" />
+                <circle cx="50" cy="40" r="20" fill="#e0e0e0" />
+                <path d="M30,30 Q50,10 70,30" fill="none" stroke="#2c2c2c" strokeWidth="4" />
+                <circle cx="45" cy="38" r="2" fill="#2c2c2c" />
+                <circle cx="55" cy="38" r="2" fill="#2c2c2c" />
+                <path d="M48,45 L52,45" stroke="#2c2c2c" strokeWidth="2" />
+                <path d="M20,100 L30,50 L70,50 L80,100" fill="#2c2c2c" opacity="0.8" />
+                <text x="85" y="30" fontSize="12" writingMode="tb" fill="#8d6e63" fontWeight="bold">沈三白</text>
+            </svg>
+        );
+
+        // --- 音效系統 ---
+        let audioCtx = null;
+        const playSound = (type) => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                gainNode.gain.setValueAtTime(0.05, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.linearRampToValueAtTime(554, now + 0.1);
+                osc.frequency.linearRampToValueAtTime(659, now + 0.2);
+                gainNode.gain.setValueAtTime(0.05, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                gainNode.gain.setValueAtTime(0.05, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        };
+
+        // --- 資料庫 (題庫) ---
+        // 修正：形音義資料修正 (壑:ㄏㄨㄛˋ, 強:ㄐㄧㄤˋ, 唳:ㄌㄧˋ)
+        const POOL_LEVEL1 = [
+            { char: '藐', pinyin: 'ㄇㄧㄠˇ', mean: '微小', desc: '藐小微物' },
+            { char: '壑', pinyin: 'ㄏㄨㄛˋ', mean: '山谷', desc: '凹者為壑' }, 
+            { char: '龐', pinyin: 'ㄆㄤˊ', mean: '巨大', desc: '龐然大物' },
+            { char: '礫', pinyin: 'ㄌㄧˋ', mean: '小石子', desc: '土礫' },
+            { char: '擬', pinyin: 'ㄋㄧˇ', mean: '比擬', desc: '私擬作' },
+            { char: '強', pinyin: 'ㄐㄧㄤˋ', mean: '僵硬', desc: '項為之強' }, 
+            { char: '唳', pinyin: 'ㄌㄧˋ', mean: '鳥鳴', desc: '鶴唳雲端' },
+            { char: '怡', pinyin: 'ㄧˊ', mean: '喜悅', desc: '怡然稱快' },
+            { char: '稚', pinyin: 'ㄓˋ', mean: '幼小', desc: '童稚' },
+            { char: '昂', pinyin: 'ㄤˊ', mean: '抬頭', desc: '昂首觀之' },
+            { char: '素', pinyin: 'ㄙㄨˋ', mean: '白色', desc: '素帳' },
+            { char: '癩', pinyin: 'ㄌㄞˋ', mean: '皮膚病', desc: '癩蝦蟆' },
+            { char: '驅', pinyin: 'ㄑㄩ', mean: '趕走', desc: '驅之別院' },
+            { char: '察', pinyin: 'ㄔㄚˊ', mean: '觀察', desc: '明察秋毫' },
+            { char: '叢', pinyin: 'ㄘㄨㄥˊ', mean: '繁雜', desc: '叢草' },
+            { char: '凹', pinyin: 'ㄠ', mean: '低陷', desc: '凹者為壑' },
+            { char: '凸', pinyin: 'ㄊㄨ', mean: '高起', desc: '凸者為丘' },
+            { char: '憶', pinyin: 'ㄧˋ', mean: '回想', desc: '余憶童稚時' },
+            { char: '雷', pinyin: 'ㄌㄟˊ', mean: '巨響', desc: '夏蚊成雷' },
+            { char: '毫', pinyin: 'ㄏㄠˊ', mean: '細毛', desc: '秋毫' }
+        ];
+
+        const POOL_LEVEL2 = [
+            { text: '項「為」之強', word: '為', ans: '因為', options: ['被', '因為', '做'], hint: '這裡是說明原因。' },
+            { text: '二蟲盡「為」所吞', word: '為', ans: '被', options: ['被', '因為', '做'], hint: '表示被動。' },
+            { text: '昂首觀「之」', word: '之', ans: '它(指蚊子)', options: ['它(指蚊子)', '的', '往'], hint: '代詞，指前面提到的蚊子。' },
+            { text: '以叢草「為」林', word: '為', ans: '當作', options: ['被', '當作', '因為'], hint: '把草當成林。' },
+            { text: '物外「之」趣', word: '之', ans: '的', options: ['它', '的', '往'], hint: '助詞，無義或解釋為「的」。' },
+            { text: '徐噴「以」煙', word: '以', ans: '用', options: ['用', '因為', '把'], hint: '用煙慢慢噴。' },
+            { text: '「以」叢草為林', word: '以', ans: '把', options: ['用', '因為', '把'], hint: '把叢草當作林。' },
+            { text: '作青雲白鶴「觀」', word: '觀', ans: '景象/看法', options: ['看', '景象/看法', '樓台'], hint: '名詞，指景象。' },
+            { text: '昂首「觀」之', word: '觀', ans: '看', options: ['看', '景象', '樓台'], hint: '動詞，抬頭看。' },
+            { text: '驅「之」別院', word: '之', ans: '它(指蝦蟆)', options: ['它(指蝦蟆)', '的', '往'], hint: '代詞，指蝦蟆。' },
+            { text: '心「之」所向', word: '之', ans: '無義(助詞)', options: ['的', '往', '無義(助詞)'], hint: '助詞，調整音節，無實義。' },
+            { text: '項為「之」強', word: '之', ans: '這件事', options: ['它', '的', '這件事'], hint: '代詞，指「抬頭看蚊子」這件事。' },
+            { text: '「蓋」一癩蝦蟆也', word: '蓋', ans: '原來是', options: ['覆蓋', '原來是', '大概'], hint: '承接上文，表示推測或解釋。' },
+            { text: '「方」出神', word: '方', ans: '正當', options: ['方向', '正當', '方形'], hint: '表示時間點，正當那時候。' },
+            { text: '明察秋「毫」', word: '毫', ans: '細毛', options: ['毛筆', '細毛', '絲毫'], hint: '原指秋天新生的細毛。' },
+            { text: '「藐」小微物', word: '藐', ans: '細小', options: ['輕視', '細小', '遙遠'], hint: '形容微小。' },
+            { text: '「私」擬作', word: '私', ans: '私下', options: ['自私', '私下', '祕密'], hint: '自己私底下比擬。' },
+            { text: '果如鶴「唳」雲端', word: '唳', ans: '鳥鳴', options: ['哭泣', '鳥鳴', '高飛'], hint: '鳥類高聲鳴叫。' },
+            { text: '「怡然」稱快', word: '怡然', ans: '喜悅的樣子', options: ['驚訝的樣子', '喜悅的樣子', '生氣的樣子'], hint: '心情愉快的樣子。' },
+            { text: '「鞭」數十', word: '鞭', ans: '鞭打', options: ['鞭子', '鞭打', '刑罰'], hint: '名詞轉動詞，用鞭子打。' }
+        ];
+
+        const POOL_LEVEL4 = [
+            { q: '「明察秋毫」的「秋毫」原意是指什麼？', options: ['秋天的毫毛', '鳥獸在秋天新生的細毛', '秋天的稻穗', '極細微的灰塵'], ans: 1, hint: '毫是指毛髮。' },
+            { q: '作者將「夏蚊」想像成「群鶴舞空」，主要是運用了哪兩種能力？', options: ['觀察力與想像力', '記憶力與聯想力', '判斷力與執行力', '觀察力與聽力'], ans: 0, hint: '看與想。' },
+            { q: '「項為之強」的「強」字讀音與意思為何？', options: ['ㄑㄧㄤˊ，強壯', 'ㄐㄧㄤˋ，固執', 'ㄐㄧㄤ，僵硬', 'ㄑㄧㄤˇ，勉強'], ans: 2, hint: '通「僵」。' },
+            { q: '「龐然大物，拔山倒樹而來」，這個「龐然大物」其實是什麼？', options: ['大象', '癩蝦蟆', '野獸', '巨石'], ans: 1, hint: '文中說是癩蝦蟆。' },
+            { q: '「徐噴以煙」的「徐」字意思是什麼？', options: ['快速地', '慢慢地', '大力地', '姓徐'], ans: 1, hint: '緩慢的意思。' },
+            { q: '關於「之」字的解釋，何者錯誤？', options: ['物外「之」趣：的', '昂首觀「之」：它', '心「之」所向：往', '驅「之」別院：它'], ans: 2, hint: '心之所向的「之」是助詞，「向」才是往。' },
+            { q: '下列何者不是作者提到的「物外之趣」？', options: ['觀蚊如鶴', '神遊山林', '鞭打蝦蟆', '捉魚玩水'], ans: 3, hint: '課文無玩水情節。' },
+            { q: '「以叢草為林」使用了哪種修辭技巧？', options: ['誇飾', '譬喻', '轉化', '映襯'], ans: 1, hint: '把草比作林。' },
+            { q: '作者鞭打蝦蟆，顯示了什麼樣的心情？', options: ['殘忍好殺', '同情弱小、正義感', '無聊打發時間', '研究生物'], ans: 1, hint: '為二蟲抱不平。' },
+            { q: '「鶴唳雲端」的「唳」意思是什麼？', options: ['哭泣', '高飛', '鳥類高聲鳴叫', '甚至'], ans: 2, hint: '指鳥鳴。' },
+            { q: '「神遊其中，怡然自得」的「神遊」意思是？', options: ['精神疲憊', '心神遊歷', '神仙保佑', '夢遊'], ans: 1, hint: '身體未到，心神已到。' },
+            { q: '「二蟲盡為所吞」的「盡」意思是？', options: ['盡力', '全部', '死亡', '盡頭'], ans: 1, hint: '兩隻蟲都被吃了。' },
+            { q: '「蓋一癩蝦蟆也」的「蓋」字在此作何解？', options: ['原來是', '覆蓋', '大概', '因為'], ans: 0, hint: '表示恍然大悟。' },
+            { q: '「夏蚊成雷」使用了什麼修辭？', options: ['譬喻', '誇飾', '擬人', '轉化'], ans: 1, hint: '聲音像雷一樣大，這是誇大。' },
+            { q: '沈復兒時記趣選自哪一本書？', options: ['浮生六記', '世說新語', '聊齋志異', '幽夢影'], ans: 0, hint: '沈復的自傳體散文。' },
+            { q: '「拔山倒樹」是用來形容什麼？', options: ['颱風', '癩蝦蟆的聲勢', '地震', '巨人的力量'], ans: 1, hint: '形容龐然大物來襲的氣勢。' },
+            { q: '作者用煙燻蚊子的目的是？', options: ['殺死蚊子', '驅趕蚊子', '製造雲霧效果', '無聊好玩'], ans: 2, hint: '作青雲白鶴觀。' },
+            { q: '「必細察其紋理」表現出作者具備什麼能力？', options: ['觀察力', '想像力', '記憶力', '判斷力'], ans: 0, hint: '仔細察看。' },
+            { q: '「餘憶童稚時」的「童稚」是指？', options: ['幼稚園', '童年', '兒童', '稚氣'], ans: 1, hint: '指小時候。' },
+            { q: '下列哪個詞語不是形容「視力好」？', options: ['明察秋毫', '張目對日', '老眼昏花', '細察紋理'], ans: 2, hint: '老眼昏花是看不清楚。' }
+        ];
+
+        // --- 工具函數：隨機抽取 ---
+        const getRandomItems = (pool, count) => {
+            const shuffled = [...pool].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        };
+
+        // --- 結算視窗組件 (顯示錯題) ---
+        const LevelResultModal = ({ title, score, wrongList, onConfirm }) => (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn p-4">
+                <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full border-4 border-tea-brown p-6 relative max-h-[90vh] overflow-y-auto">
+                    <div className="text-center mb-6">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-2xl font-bold ${score >= 80 ? 'bg-vermilion' : 'bg-gray-500'}`}>
+                            {score}
+                        </div>
+                        <h3 className="text-2xl font-bold text-ink-black">{title} - 成績單</h3>
+                    </div>
+                    
+                    <div className="bg-stone-50 p-4 rounded-lg text-sm text-gray-700 mb-6 border border-stone-200">
+                        <h4 className="font-bold mb-2 text-lg">【錯題回顧與詳解】</h4>
+                        {wrongList && wrongList.length > 0 ? (
+                            <ul className="space-y-4 text-left">
+                                {wrongList.map((item, idx) => (
+                                    <li key={idx} className="bg-white p-3 rounded border border-red-200">
+                                        <p className="font-bold text-ink-black mb-1">題目：{item.q}</p>
+                                        <p className="text-red-600">你的答案：{item.userAns}</p>
+                                        <p className="text-green-700 font-bold">正確答案：{item.correctAns}</p>
+                                        <p className="text-gray-500 text-xs mt-1">解析：{item.hint || item.desc || "無"}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-center text-green-600 font-bold text-lg">太厲害了！全對！</p>
+                        )}
+                    </div>
+
+                    <button onClick={onConfirm} className="w-full btn-classical py-3 text-lg">
+                        領取成績，回書房 <Icon name="arrow-right" size={20} />
+                    </button>
+                </div>
+            </div>
+        );
+
+        // --- 遊戲規則 Modal ---
+        const RulesModal = ({ onConfirm }) => (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-fadeIn p-4">
+                <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border-4 border-tea-brown p-8 relative">
+                    <h2 className="text-2xl font-bold text-center mt-2 mb-6 text-ink-black tracking-widest border-b-2 border-dashed border-gray-300 pb-4">私塾學規</h2>
+                    <div className="space-y-4 text-gray-700 text-lg leading-relaxed">
+                        <div className="flex gap-3"><span className="text-vermilion font-bold">壹、</span><p>需先通過前三關，平均 <span className="font-bold text-vermilion">80分</span> 以上，方可解鎖「最終挑戰」。</p></div>
+                        <div className="flex gap-3"><span className="text-vermilion font-bold">貳、</span><p>進入關卡後若「放棄挑戰」，該關卡將被記過，下次完成時<span className="font-bold text-vermilion">扣 10 分</span>。</p></div>
+                        <div className="flex gap-3"><span className="text-vermilion font-bold">參、</span><p>第三關為打字挑戰，請準備好你的鍵盤。</p></div>
+                    </div>
+                    <button onClick={onConfirm} className="w-full btn-classical py-3 text-xl mt-8 bg-bamboo-green hover:bg-green-700 shadow-md">學生知悉 <Icon name="check" size={24} /></button>
+                </div>
+            </div>
+        );
+
+        // --- 關卡 1: 形音義 (隨機 5 題) ---
+        const Level1_Words = ({ onFinish, onAbandon }) => {
+            const [questions, setQuestions] = useState([]);
+            const [idx, setIdx] = useState(0);
+            const [userAnswers, setUserAnswers] = useState([]);
+            
+            // 初始化隨機題目
+            useEffect(() => {
+                const q = getRandomItems(POOL_LEVEL1, 5);
+                setQuestions(q);
+            }, []);
+
+            const currentItem = questions[idx];
+
+            // 產生選項 (正確答案 + 3個隨機錯誤答案)
+            const options = React.useMemo(() => {
+                if (!currentItem) return [];
+                const wrong = POOL_LEVEL1.filter(i => i.mean !== currentItem.mean).sort(() => 0.5 - Math.random()).slice(0, 3).map(i => i.mean);
+                return [...wrong, currentItem.mean].sort(() => 0.5 - Math.random());
+            }, [currentItem]);
+
+            const handleSelect = (meaning) => {
+                const currentQ = questions[idx];
+                const isCorrect = currentQ.mean === meaning;
+                
+                const record = {
+                    q: `${currentQ.char} (${currentQ.pinyin})`,
+                    userAns: meaning,
+                    correctAns: currentQ.mean,
+                    isCorrect: isCorrect,
+                    desc: currentQ.desc
+                };
+
+                const newUserAnswers = [...userAnswers, record];
+                setUserAnswers(newUserAnswers);
+
+                if (isCorrect) playSound('correct');
+                else playSound('wrong');
+
+                if (idx + 1 < questions.length) {
+                    setTimeout(() => setIdx(idx + 1), 500);
+                } else {
+                    finishGame(newUserAnswers);
+                }
+            };
+
+            const finishGame = (answers) => {
+                const correctCount = answers.filter(a => a.isCorrect).length;
+                const score = (correctCount / answers.length) * 100;
+                const wrongList = answers.filter(a => !a.isCorrect);
+                onFinish(score, wrongList);
+            };
+
+            // 安全檢查
+            if (!currentItem) return <div>載入中...</div>;
+
+            return (
+                <div className="p-6 relative">
+                    {/* 修正：放棄按鈕移動到標題列，避免重疊並確保點擊 */}
+                    <div className="flex justify-between items-start mb-4 border-b border-tea-brown pb-2">
+                        <h3 className="text-xl font-bold text-tea-brown flex items-center gap-2">
+                            <Icon name="feather" /> 第一關：形音義 ({idx + 1}/5)
+                        </h3>
+                        <button onClick={onAbandon} className="bg-white/80 backdrop-blur border border-stone-300 px-3 py-1 rounded-full text-stone-500 hover:bg-red-50 hover:text-red-600 transition text-sm font-bold flex items-center gap-1 cursor-pointer">
+                            <Icon name="log-out" size={14}/> 放棄
+                        </button>
+                    </div>
+                    
+                    <div className="text-center mt-10 mb-10">
+                        <div className="inline-block p-8 border-4 border-double border-stone-300 rounded-xl bg-white shadow-lg">
+                            <h2 className="text-6xl font-serif font-bold text-ink-black mb-2">{currentItem.char}</h2>
+                            <p className="text-xl text-gray-500">{currentItem.pinyin}</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {options.map((opt, i) => (
+                            <button key={i} onClick={() => handleSelect(opt)} className="p-4 bg-stone-100 hover:bg-tea-brown hover:text-white rounded text-xl font-bold transition">
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 關卡 2: 字義偵探 (隨機 10 題) ---
+        const Level2_Investigator = ({ onFinish, onAbandon }) => {
+            const [questions, setQuestions] = useState([]);
+            const [idx, setIdx] = useState(0);
+            const [userAnswers, setUserAnswers] = useState([]);
+
+            useEffect(() => {
+                setQuestions(getRandomItems(POOL_LEVEL2, 10));
+            }, []);
+
+            const handleAns = (opt) => {
+                const q = questions[idx];
+                const isCorrect = opt === q.ans;
+                const record = { q: q.text, userAns: opt, correctAns: q.ans, isCorrect, hint: q.hint };
+                const newAns = [...userAnswers, record];
+                setUserAnswers(newAns);
+                
+                if (isCorrect) playSound('correct');
+                else playSound('wrong');
+
+                if (idx + 1 < questions.length) setTimeout(() => setIdx(idx + 1), 500);
+                else {
+                    const correctCount = newAns.filter(a => a.isCorrect).length;
+                    const score = (correctCount / 10) * 100;
+                    onFinish(score, newAns.filter(a => !a.isCorrect));
+                }
+            };
+
+            if (questions.length === 0) return <div>載入中...</div>;
+            const q = questions[idx];
+
+            return (
+                <div className="p-6 relative">
+                     {/* 修正：放棄按鈕移動到標題列 */}
+                     <div className="flex justify-between items-start mb-4 border-b border-tea-brown pb-2">
+                        <h3 className="text-xl font-bold text-tea-brown flex items-center gap-2">
+                            <Icon name="search" /> 第二關：字義偵探 ({idx + 1}/10)
+                        </h3>
+                        <button onClick={onAbandon} className="bg-white/80 backdrop-blur border border-stone-300 px-3 py-1 rounded-full text-stone-500 hover:bg-red-50 hover:text-red-600 transition text-sm font-bold flex items-center gap-1 cursor-pointer">
+                            <Icon name="log-out" size={14}/> 放棄
+                        </button>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-lg shadow-md mb-6 text-center border-2 border-stone-100">
+                        <p className="text-3xl font-serif mb-6 text-ink-black font-bold">{q.text}</p>
+                        <p className="text-gray-600 mb-6 text-lg">請問「{q.word}」在此處的意思是？</p>
+                        <div className="flex flex-wrap justify-center gap-4">
+                            {q.options.map((opt, i) => (
+                                <button key={i} onClick={() => handleAns(opt)} className="px-6 py-3 bg-bamboo-green text-white rounded-full hover:bg-green-700 transition shadow-lg text-lg">
+                                    {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 關卡 3: 課文打字挑戰 (300秒) ---
+        const Level3_Typing = ({ onFinish, onAbandon }) => {
+            const targetText = "夏蚊成雷，私擬作群鶴舞空，心之所向，則或千或百，果然鶴也。昂首觀之，項為之強。又留蚊於素帳中，徐噴以煙，使之沖煙飛鳴，作青雲白鶴觀，果如鶴唳雲端，為之怡然稱快。";
+            const [input, setInput] = useState("");
+            const [timeLeft, setTimeLeft] = useState(300); // 5分鐘
+            const [isFinished, setIsFinished] = useState(false);
+
+            useEffect(() => {
+                if (timeLeft > 0 && !isFinished) {
+                    const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+                    return () => clearTimeout(timer);
+                } else if (timeLeft === 0 && !isFinished) {
+                    handleSubmit();
+                }
+            }, [timeLeft, isFinished]);
+
+            const handleSubmit = () => {
+                setIsFinished(true);
+                // 計算正確率
+                let correctChars = 0;
+                for(let i=0; i<targetText.length; i++) {
+                    if (input[i] === targetText[i]) correctChars++;
+                }
+                const accuracy = Math.round((correctChars / targetText.length) * 100);
+                
+                // 懲罰
+                const lengthPenalty = Math.abs(targetText.length - input.length) > 10 ? 10 : 0;
+                const finalScore = Math.max(0, accuracy - lengthPenalty);
+                
+                const wrongList = finalScore < 100 ? [{q: "課文打字", userAns: "有錯漏字", correctAns: "需完全正確", hint: "請對照課文檢查錯別字與標點符號。"}] : [];
+                
+                playSound('correct');
+                onFinish(finalScore, wrongList);
+            };
+
+            return (
+                <div className="p-6 relative">
+                    {/* 修正：放棄按鈕移動到標題列 */}
+                    <div className="flex justify-between items-start mb-4 border-b border-tea-brown pb-2">
+                        <h3 className="text-xl font-bold text-tea-brown flex items-center justify-between gap-4 w-full">
+                            <span className="flex items-center gap-2"><Icon name="keyboard" className="inline"/> 第三關：課文打字（第二段）</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-vermilion text-base">{Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2,'0')}</span>
+                                <button onClick={onAbandon} className="bg-white/80 backdrop-blur border border-stone-300 px-3 py-1 rounded-full text-stone-500 hover:bg-red-50 hover:text-red-600 transition text-sm font-bold flex items-center gap-1 cursor-pointer">
+                                    <Icon name="log-out" size={14}/> 放棄
+                                </button>
+                            </div>
+                        </h3>
+                    </div>
+                    
+                    {/* 修正：隱藏原文，改為默寫模式 */}
+                    <div className="bg-amber-50 p-4 rounded mb-4 text-center border-2 border-dashed border-amber-200">
+                        <h4 className="font-bold text-lg text-amber-800 mb-1">【默寫挑戰】</h4>
+                        <p className="text-stone-600">請在下方對話框中，憑記憶默打出課文<span className="font-bold text-ink-black">第二段（夏蚊成雷...）</span>全文。</p>
+                        <p className="text-xs text-gray-400 mt-1">＊注意：需包含正確標點符號。</p>
+                    </div>
+
+                    <textarea 
+                        className="w-full h-40 p-4 border-2 border-stone-300 rounded focus:border-tea-brown focus:outline-none text-lg font-serif"
+                        placeholder="請在此輸入：夏蚊成雷，私擬作群鶴舞空......"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        disabled={isFinished}
+                    ></textarea>
+
+                    <div className="text-right mt-2 text-sm text-gray-500">
+                        字數：{input.length} / {targetText.length}
+                    </div>
+
+                    <button onClick={handleSubmit} className="w-full mt-4 btn-classical py-3 text-lg">
+                        提交答案
+                    </button>
+                </div>
+            );
+        };
+
+        // --- 最終挑戰 (隨機 10 題) ---
+        const FinalQuiz = ({ onFinish, onAbandon }) => {
+            const [questions, setQuestions] = useState([]);
+            const [idx, setIdx] = useState(0);
+            const [userAnswers, setUserAnswers] = useState([]);
+
+            useEffect(() => {
+                setQuestions(getRandomItems(POOL_LEVEL4, 10));
+            }, []);
+
+            const handleAns = (idxOpt) => {
+                const q = questions[idx];
+                const isCorrect = idxOpt === q.ans;
+                const record = { 
+                    q: q.q, 
+                    userAns: q.options[idxOpt], 
+                    correctAns: q.options[q.ans], 
+                    isCorrect, 
+                    hint: q.hint 
+                };
+                const newAns = [...userAnswers, record];
+                setUserAnswers(newAns);
+
+                if (isCorrect) playSound('correct');
+                else playSound('wrong');
+
+                if (idx + 1 < questions.length) setTimeout(() => setIdx(idx + 1), 500);
+                else {
+                    const correctCount = newAns.filter(a => a.isCorrect).length;
+                    const score = (correctCount / 10) * 100;
+                    onFinish(score, newAns.filter(a => !a.isCorrect));
+                }
+            };
+
+            if (questions.length === 0) return <div>載入中...</div>;
+            const q = questions[idx];
+
+            return (
+                <div className="p-6 relative">
+                    {/* 修正：放棄按鈕移動到標題列 */}
+                    <div className="flex justify-between items-start mb-6 border-b border-tea-brown pb-2">
+                        <span className="font-bold text-gray-500">第 {idx + 1} / 10 題</span>
+                        <button onClick={onAbandon} className="bg-white/80 backdrop-blur border border-stone-300 px-3 py-1 rounded-full text-stone-500 hover:bg-red-50 hover:text-red-600 transition text-sm font-bold flex items-center gap-1 cursor-pointer">
+                            <Icon name="log-out" size={14}/> 放棄
+                        </button>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-xl shadow-md mb-6 border-l-8 border-bamboo-green min-h-[120px] flex items-center">
+                        <p className="text-xl font-bold text-ink-black">{q.q}</p>
+                    </div>
+                    <div className="grid gap-3">
+                        {q.options.map((opt, i) => (
+                            <button key={i} onClick={() => handleAns(i)} className="text-left p-4 rounded-lg border-2 transition-all font-bold text-gray-700 bg-white hover:bg-orange-50 border-stone-200">
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 入學登記 (修正版) ---
+        const Onboarding = ({ user, setUser, onStart }) => (
+            <div className="max-w-md mx-auto p-8 bg-white rounded-xl shadow-2xl border-4 border-double border-tea-brown mt-10 animate-float">
+                <h1 className="text-3xl font-bold text-center mb-6 text-ink-black tracking-widest">私塾入學登記</h1>
+                <div className="flex flex-col items-center mb-6">
+                    <NpcImage />
+                    <div className="bg-stone-100 p-3 rounded-lg text-sm text-gray-700 italic border-l-4 border-tea-brown">
+                        「老夫乃今日講學之夫子。欲入此門，先報上名來。」
+                        <br/>
+                        <span className="text-xs text-gray-500 mt-1 block">(若為夫子查榜，請於姓名處填寫 teacher)</span>
+                    </div>
+                </div>
+                
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        <input type="text" placeholder="班級 (例:701)" value={user.classNo} 
+                            onChange={(e) => setUser({...user, classNo: e.target.value})}
+                            className="w-full p-3 border-2 border-stone-300 rounded-lg text-center focus:border-tea-brown focus:outline-none" />
+                        
+                        <input type="text" placeholder="座號 (例:05)" value={user.seatNo} 
+                            onChange={(e) => setUser({...user, seatNo: e.target.value})}
+                            className="w-full p-3 border-2 border-stone-300 rounded-lg text-center focus:border-tea-brown focus:outline-none" />
+                    </div>
+                    
+                    <input type="text" placeholder="姓名" value={user.name} 
+                        onChange={(e) => setUser({...user, name: e.target.value})}
+                        className="w-full p-3 border-2 border-stone-300 rounded-lg text-center text-lg focus:border-tea-brown focus:outline-none" />
+                </div>
+
+                <button onClick={onStart} className="w-full btn-classical justify-center text-xl py-3 mt-6">
+                    {user.name.toLowerCase() === 'teacher' ? '進入教師介面' : '開始上課'} <Icon name="arrow-right" />
+                </button>
+            </div>
+        );
+
+        // --- 教師後台 ---
+        const TeacherDashboard = ({ onBack }) => {
+            const [inputCode, setInputCode] = useState("");
+            const [result, setResult] = useState(null);
+            const [error, setError] = useState("");
+
+            const handleParse = () => {
+                try {
+                    // 修正：支援解析新的純亂碼格式
+                    // 格式預期：[驗證碼: xxxxx]
+                    const match = inputCode.match(/\[驗證碼:\s*([A-Za-z0-9+/=]+)\]/);
+                    if (match && match[1]) {
+                        const jsonStr = decodeURIComponent(escape(atob(match[1])));
+                        const data = JSON.parse(jsonStr);
+                        setResult(data);
+                        setError("");
+                        playSound('correct');
+                    } else {
+                        throw new Error("找不到有效的驗證碼，請確認是否複製完整。");
+                    }
+                } catch (err) {
+                    setError("解析失敗：" + err.message);
+                    setResult(null);
+                    playSound('wrong');
+                }
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto p-6 animate-fadeIn">
+                    <div className="bg-white rounded-xl shadow-2xl border-4 border-tea-brown p-6 relative">
+                        <button onClick={onBack} className="absolute top-4 left-4 text-gray-500 hover:text-tea-brown flex items-center gap-1 cursor-pointer">
+                            <Icon name="arrow-left" size={16}/> 返回
+                        </button>
+                        
+                        <h2 className="text-2xl font-bold text-center mb-6 text-ink-black mt-4">夫子閱卷室</h2>
+                        
+                        <div className="mb-6">
+                            <label className="block text-sm font-bold mb-2 text-gray-700">請貼上學生複製的成績驗證碼：</label>
+                            <textarea 
+                                value={inputCode}
+                                onChange={(e) => setInputCode(e.target.value)}
+                                className="w-full h-32 p-3 border-2 border-stone-300 rounded-lg text-sm font-mono focus:border-tea-brown focus:outline-none"
+                                placeholder="[驗證碼: eyJjbGFzc05vIjoiNzA..."
+                            ></textarea>
+                            <button onClick={handleParse} className="w-full mt-3 btn-classical justify-center py-3 bg-bamboo-green hover:bg-green-700">
+                                <Icon name="check-circle" /> 解析成績
+                            </button>
+                        </div>
+
+                        {error && (
+                            <div className="p-4 bg-red-100 text-red-700 rounded-lg mb-4 text-center border border-red-300">
+                                {error}
+                            </div>
+                        )}
+
+                        {result && (
+                            <div className="bg-stone-50 p-6 rounded-xl border-2 border-stone-300 animate-fadeIn">
+                                <div className="flex items-center justify-between mb-4 border-b pb-2 border-stone-300">
+                                    <div>
+                                        <span className="text-sm text-gray-500 block">學生資料</span>
+                                        <h3 className="text-xl font-bold text-ink-black">
+                                            {result.classNo} 班 {result.seatNo} 號 - {result.name}
+                                        </h3>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-sm text-gray-500 block">總評</span>
+                                        <span className={`text-2xl font-bold ${result.finalScore >= 80 ? 'text-vermilion' : 'text-gray-600'}`}>
+                                            {result.finalScore >= 80 ? '優異' : '待加強'}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4 text-center">
+                                    <div className="bg-white p-3 rounded shadow-sm border border-stone-200">
+                                        <div className="text-gray-500 text-xs">第一關</div>
+                                        <div className="font-bold text-lg">{result.scores[1]} 分</div>
+                                    </div>
+                                    <div className="bg-white p-3 rounded shadow-sm border border-stone-200">
+                                        <div className="text-gray-500 text-xs">第二關</div>
+                                        <div className="font-bold text-lg">{result.scores[2]} 分</div>
+                                    </div>
+                                    <div className="bg-white p-3 rounded shadow-sm border border-stone-200">
+                                        <div className="text-gray-500 text-xs">第三關</div>
+                                        <div className="font-bold text-lg">{result.scores[3]} 分</div>
+                                    </div>
+                                    <div className="bg-white p-3 rounded shadow-sm border border-stone-200 ring-2 ring-accent-gold">
+                                        <div className="text-accent-gold text-xs font-bold">最終測驗</div>
+                                        <div className="font-bold text-lg">{result.finalScore} 分</div>
+                                    </div>
+                                </div>
+                                <div className="mt-4 text-center text-xs text-gray-400">
+                                    驗證時間：{new Date(result.timestamp).toLocaleString()}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 主程式 ---
+        const App = () => {
+            const [scene, setScene] = useState('onboarding'); 
+            const [user, setUser] = useState({ classNo: '', seatNo: '', name: '' });
+            const [customImage, setCustomImage] = useState(null);
+            const [progress, setProgress] = useState({
+                1: { done: false, score: 0, penalty: false },
+                2: { done: false, score: 0, penalty: false },
+                3: { done: false, score: 0, penalty: false },
+                4: { done: false, score: 0, penalty: false }
+            });
+
+            const [showResultModal, setShowResultModal] = useState(false);
+            const [showRulesModal, setShowRulesModal] = useState(false);
+            const [modalData, setModalData] = useState({ title: '', score: 0, wrongList: [] });
+
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [scene, showResultModal, showRulesModal]);
+
+            const startLobby = () => {
+                 if (user.name.toLowerCase() === 'teacher') {
+                     playSound('click');
+                     setScene('teacher');
+                     return;
+                 }
+
+                 if(user.classNo && user.seatNo && user.name.trim()) { 
+                     playSound('click'); 
+                     setScene('lobby'); 
+                     setShowRulesModal(true); 
+                 } else { 
+                     alert("請完整填寫班級、座號與姓名"); 
+                 }
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => setCustomImage(e.target.result);
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleLevelFinish = (lvl, rawScore, wrongList) => {
+                let finalScore = Math.round(rawScore);
+                let detailsMsg = "";
+                
+                if (progress[lvl].penalty) {
+                    finalScore = Math.max(0, finalScore - 10);
+                    detailsMsg = "(已扣除放棄懲罰 10 分)";
+                }
+
+                let title = "";
+                if (lvl === 1) title = "第一關：形音義辨析" + detailsMsg;
+                if (lvl === 2) title = "第二關：字義偵探" + detailsMsg;
+                if (lvl === 3) title = "第三關：課文打字" + detailsMsg;
+                if (lvl === 4) title = "狀元試" + detailsMsg;
+
+                setModalData({ title, score: finalScore, wrongList });
+                setProgress(prev => ({ ...prev, [lvl]: { ...prev[lvl], done: true, score: finalScore } }));
+                setShowResultModal(true);
+            };
+
+            const handleAbandon = (lvl) => {
+                if (confirm("確定要放棄嗎？放棄後重新挑戰將會被扣 10 分！")) {
+                    setProgress(prev => ({ ...prev, [lvl]: { ...prev[lvl], penalty: true } }));
+                    setScene('lobby');
+                }
+            };
+
+            const closeResultModal = () => {
+                setShowResultModal(false);
+                if (modalData.title.includes("狀元試")) setScene('result');
+                else setScene('lobby');
+            };
+
+            const getAvgScore = () => Math.round((progress[1].score + progress[2].score + progress[3].score) / 3);
+            const canUnlockFinal = () => progress[1].done && progress[2].done && progress[3].done && getAvgScore() >= 80;
+
+            // 修正：產生並複製成績單 (移除明文，僅保留加密驗證碼)
+            const generateReport = () => {
+                // 準備加密資料
+                const secureData = {
+                    classNo: user.classNo,
+                    seatNo: user.seatNo,
+                    name: user.name,
+                    scores: {
+                        1: progress[1].score,
+                        2: progress[2].score,
+                        3: progress[3].score
+                    },
+                    finalScore: progress[4].score,
+                    timestamp: new Date().getTime()
+                };
+                // 轉為 Base64
+                const code = btoa(unescape(encodeURIComponent(JSON.stringify(secureData))));
+
+                // 修正：不顯示明文成績，只顯示亂碼
+                const report = `[驗證碼: ${code}]`;
+                
+                const textarea = document.createElement("textarea");
+                textarea.value = report;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand("copy");
+                    alert("成績驗證碼已複製！\n請直接貼上繳交，老師將透過後台解碼查看成績。");
+                } catch (err) {
+                    alert("複製失敗，請手動複製驗證碼。");
+                }
+                document.body.removeChild(textarea);
+            };
+
+            const GameWrapper = ({ children }) => (
+                <div className="max-w-3xl mx-auto pt-10 px-4 animate-fadeIn">
+                    <div className="bg-white rounded-2xl shadow-xl min-h-[400px] border border-stone-200 relative overflow-hidden ink-border">
+                        {children}
+                    </div>
+                </div>
+            );
+
+            const Lobby = () => (
+                <div className="max-w-4xl mx-auto p-4 animate-fadeIn">
+                    <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow-sm border border-stone-200">
+                        <div>
+                            <h1 className="text-2xl font-bold text-ink-black">兒時記趣</h1>
+                            <span className="text-sm font-normal text-gray-600 block mt-1">
+                                {user.classNo} 班 {user.seatNo} 號 - {user.name}
+                            </span>
+                        </div>
+                        <div className="text-right text-sm">
+                            <p>平均成績：<span className="font-bold text-vermilion text-lg">{getAvgScore()}</span> 分</p>
+                            <p className="text-xs text-gray-400">目標：80分以上解鎖「最終挑戰」</p>
+                        </div>
+                    </header>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                        <div className="md:col-span-1">
+                            <div className="bg-white p-4 rounded-xl shadow-lg border-4 border-stone-800 relative overflow-hidden text-center">
+                                <h2 className="text-xl font-bold mb-4 font-serif text-stone-800">沈三白 像</h2>
+                                <div className="w-full h-48 bg-stone-100 mx-auto mb-4 rounded border-2 border-stone-200 flex items-center justify-center overflow-hidden relative">
+                                    {customImage ? <img src={customImage} className="w-full h-full object-cover" /> : <DefaultShenFuImage />}
+                                </div>
+                                <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-1 rounded text-xs text-stone-600 block mb-2">
+                                    更換頭像
+                                    <input type="file" accept="image/*" onChange={handleImageUpload} />
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="md:col-span-2 grid gap-4">
+                            {/* 修正：回復大廳卡片上的「第一關」等標題，並移除次要說明 */}
+                            <LevelCard icon="feather" title="第一關：形音義辨析" desc="" score={progress[1].score} done={progress[1].done} penalty={progress[1].penalty} onClick={() => setScene('level1')} />
+                            <LevelCard icon="search" title="第二關：字義偵探" desc="" score={progress[2].score} done={progress[2].done} penalty={progress[2].penalty} onClick={() => setScene('level2')} />
+                            <LevelCard icon="keyboard" title="第三關：課文打字" desc="" score={progress[3].score} done={progress[3].done} penalty={progress[3].penalty} onClick={() => setScene('level3')} />
+                            
+                            <div className="mt-4 border-t-2 border-dashed border-stone-300 pt-4">
+                                <button 
+                                    onClick={() => canUnlockFinal() ? setScene('level4') : alert("請先完成前三關且平均分數達80分！")}
+                                    disabled={!canUnlockFinal()}
+                                    className={`w-full p-6 rounded-xl shadow-lg transition-all flex items-center justify-between
+                                        ${canUnlockFinal() ? 'bg-gradient-to-r from-tea-brown to-stone-700 text-white hover:shadow-2xl cursor-pointer transform hover:-translate-y-1' : 'bg-gray-200 text-gray-400 cursor-not-allowed grayscale'}
+                                    `}
+                                >
+                                    <div className="text-left">
+                                        <h3 className="text-2xl font-bold mb-1 flex items-center gap-2"><Icon name={canUnlockFinal() ? "lock-open" : "lock"} /> 最終挑戰：狀元試</h3>
+                                        <p className="text-sm opacity-80">{canUnlockFinal() ? "點擊開始" : "解鎖條件：三關平均 > 80分"}</p>
+                                    </div>
+                                    <Icon name="arrow-right" size={32} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="pb-10">
+                    {showRulesModal && <RulesModal onConfirm={() => setShowRulesModal(false)} />}
+                    {showResultModal && <LevelResultModal {...modalData} onConfirm={closeResultModal} />}
+
+                    {scene === 'onboarding' && <Onboarding user={user} setUser={setUser} onStart={startLobby} />}
+                    {scene === 'teacher' && <TeacherDashboard onBack={() => setScene('onboarding')} />}
+                    {scene === 'lobby' && <Lobby />}
+                    {scene === 'level1' && <GameWrapper><Level1_Words onFinish={(s, w) => handleLevelFinish(1, s, w)} onAbandon={() => handleAbandon(1)} /></GameWrapper>}
+                    {scene === 'level2' && <GameWrapper><Level2_Investigator onFinish={(s, w) => handleLevelFinish(2, s, w)} onAbandon={() => handleAbandon(2)} /></GameWrapper>}
+                    {scene === 'level3' && <GameWrapper><Level3_Typing onFinish={(s, w) => handleLevelFinish(3, s, w)} onAbandon={() => handleAbandon(3)} /></GameWrapper>}
+                    {scene === 'level4' && <GameWrapper><FinalQuiz onFinish={(s, w) => handleLevelFinish(4, s, w)} onAbandon={() => handleAbandon(4)} /></GameWrapper>}
+                    
+                    {scene === 'result' && (
+                        <div className="max-w-xl mx-auto p-8 pt-20 text-center animate-fadeIn">
+                            <div className="bg-white p-8 rounded-3xl shadow-2xl border-4 border-accent-gold relative">
+                                <Icon name="award" size={64} className="text-accent-gold mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold mb-4 text-ink-black">恭喜完成學業！</h2>
+                                <div className="text-6xl font-black text-tea-brown mb-2">{progress[4].score}</div>
+                                <p className="text-gray-500 mb-6">最終測驗分數</p>
+                                <button onClick={generateReport} className="w-full btn-classical justify-center text-lg py-3 mb-3 bg-bamboo-green hover:bg-green-700">
+                                    <Icon name="copy" /> 複製成績驗證碼 (繳交作業)
+                                </button>
+                                <button onClick={() => window.location.reload()} className="w-full btn-classical justify-center text-lg py-3 bg-stone-600 hover:bg-stone-700">重新開始</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const LevelCard = ({ icon, title, desc, score, done, penalty, onClick }) => (
+            <button onClick={() => { playSound('click'); onClick(); }} className="w-full bg-white p-4 rounded-xl border border-stone-200 shadow-sm hover:border-tea-brown hover:shadow-md transition flex items-center justify-between group">
+                <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-full ${done ? 'bg-green-100 text-green-700' : 'bg-stone-100 text-stone-500 group-hover:bg-orange-100 group-hover:text-tea-brown'}`}>
+                        <Icon name={icon} />
+                    </div>
+                    <div className="text-left">
+                        <h4 className="font-bold text-lg text-ink-black flex items-center gap-2">
+                            {title}
+                            {penalty && <span className="text-xs text-red-500 bg-red-100 px-1 rounded">懲罰中</span>}
+                        </h4>
+                        <p className="text-xs text-gray-500">{desc}</p>
+                    </div>
+                </div>
+                {done ? (
+                    <div className="text-right">
+                        <span className="text-2xl font-bold text-tea-brown">{score}</span>
+                        <span className="text-xs text-gray-400 block">分</span>
+                    </div>
+                ) : <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">未完成</span>}
+            </button>
+        );
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
