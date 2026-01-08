@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國文課：兒時記趣 - 互動闖關 (v6 最終修正版)</title>
+    <title>國文課：兒時記趣 - 互動闖關大挑戰</title>
     
     <!-- 載入核心庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
@@ -109,7 +109,7 @@
             // 設定 1：NPC 老夫子圖片路徑
             // 請確認您的 GitHub 上的資料夾名稱與檔名大小寫完全一致
             // 範例："image/npc_master.png" 或 "https://raw.githubusercontent.com/.../image.jpg"
-            npcImage: "image/老夫子.jpg", 
+            npcImage: "image/老夫子.jpeg", 
 
             // 設定 2：沈復圖片路徑
             // 範例："test4/image/沈復.jpeg"
@@ -183,7 +183,7 @@
             { char: '察', pinyin: 'ㄔㄚˊ', mean: '觀察', desc: '明察秋毫' },
             { char: '叢', pinyin: 'ㄘㄨㄥˊ', mean: '繁雜', desc: '叢草' },
             { char: '凹', pinyin: 'ㄠ', mean: '低陷', desc: '凹者為壑' },
-            { char: '凸', pinyin: 'ㄊㄨˊ', mean: '高起', desc: '凸者為丘' },
+            { char: '凸', pinyin: 'ㄊㄨ', mean: '高起', desc: '凸者為丘' },
             { char: '憶', pinyin: 'ㄧˋ', mean: '回想', desc: '余憶童稚時' },
             { char: '毫', pinyin: 'ㄏㄠˊ', mean: '細毛', desc: '秋毫' }
         ];
@@ -214,7 +214,7 @@
         const POOL_LEVEL4 = [
             { q: '「明察秋毫」的「秋毫」原意是指什麼？', options: ['秋天的毫毛', '鳥獸在秋天新生的細毛', '秋天的稻穗', '極細微的灰塵'], ans: 1, hint: '毫是指毛髮。' },
             { q: '作者將「夏蚊」想像成「群鶴舞空」，主要是運用了哪兩種能力？', options: ['觀察力與想像力', '記憶力與聯想力', '判斷力與執行力', '觀察力與聽力'], ans: 0, hint: '看與想。' },
-            { q: '「項為之強」的「強」字讀音與意思為何？', options: ['ㄑㄧㄤˊ，強壯', 'ㄐㄧㄤˋ，固執', 'ㄐㄧㄤˋ，僵硬', 'ㄑㄧㄤˇ，勉強'], ans: 2, hint: '通「僵」。' },
+            { q: '「項為之強」的「強」字讀音與意思為何？', options: ['ㄑㄧㄤˊ，強壯', 'ㄐㄧㄤˋ，固執', 'ㄐㄧㄤ，僵硬', 'ㄑㄧㄤˇ，勉強'], ans: 2, hint: '通「僵」。' },
             { q: '「龐然大物，拔山倒樹而來」，這個「龐然大物」其實是什麼？', options: ['大象', '癩蝦蟆', '野獸', '巨石'], ans: 1, hint: '文中說是癩蝦蟆。' },
             { q: '「徐噴以煙」的「徐」字意思是什麼？', options: ['快速地', '慢慢地', '大力地', '姓徐'], ans: 1, hint: '緩慢的意思。' },
             { q: '關於「之」字的解釋，何者錯誤？', options: ['物外「之」趣：的', '昂首觀「之」：它', '心「之」所向：往', '驅「之」別院：它'], ans: 2, hint: '心之所向的「之」是助詞，「向」才是往。' },
@@ -270,7 +270,7 @@
                     </div>
 
                     <button onClick={onConfirm} className="w-full btn-classical py-3 text-lg">
-                        領取成績，回書房 <Icon name="arrow-right" size={20} />
+                        確認 <Icon name="check" size={20} />
                     </button>
                 </div>
             </div>
@@ -314,6 +314,35 @@
                     <h3 className="text-2xl font-bold text-orange-800 mb-2">懲罰生效</h3>
                     <p className="text-gray-700 mb-6">因上次放棄挑戰，<br/>本次結算成績將<span className="font-bold text-red-600">扣除 10 分</span>。</p>
                     <button onClick={onConfirm} className="w-full py-2 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 shadow">開始挑戰</button>
+                </div>
+            </div>
+        );
+
+        // --- 個人資訊確認 Modal (新增) ---
+        const ProfileConfirmModal = ({ user, setUser, onConfirm }) => (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] animate-fadeIn p-4">
+                <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border-4 border-tea-brown p-8">
+                    <h2 className="text-2xl font-bold text-center mb-6 text-ink-black border-b pb-2">名帖確認</h2>
+                    <p className="text-center text-gray-600 mb-4">即將公佈榜單，請確認您的資料無誤。</p>
+                    
+                    <div className="space-y-4 mb-6">
+                         <div>
+                            <label className="text-xs text-gray-500 font-bold">班級</label>
+                            <input type="text" value={user.classNo} onChange={e => setUser({...user, classNo: e.target.value})} className="w-full p-2 border border-stone-300 rounded focus:border-tea-brown outline-none" />
+                         </div>
+                         <div>
+                            <label className="text-xs text-gray-500 font-bold">座號</label>
+                            <input type="text" value={user.seatNo} onChange={e => setUser({...user, seatNo: e.target.value})} className="w-full p-2 border border-stone-300 rounded focus:border-tea-brown outline-none" />
+                         </div>
+                         <div>
+                            <label className="text-xs text-gray-500 font-bold">姓名</label>
+                            <input type="text" value={user.name} onChange={e => setUser({...user, name: e.target.value})} className="w-full p-2 border border-stone-300 rounded focus:border-tea-brown outline-none" />
+                         </div>
+                    </div>
+
+                    <button onClick={onConfirm} className="w-full btn-classical py-3 text-lg bg-bamboo-green hover:bg-green-700">
+                        確認無誤，查看榜單 <Icon name="check" size={20} />
+                    </button>
                 </div>
             </div>
         );
@@ -739,10 +768,11 @@
             const [showResultModal, setShowResultModal] = useState(false);
             const [showRulesModal, setShowRulesModal] = useState(false);
             const [showAbandonModal, setShowAbandonModal] = useState(false);
+            const [showProfileConfirm, setShowProfileConfirm] = useState(false); // 新增：個人資料確認視窗狀態
             const [currentAbandonLvl, setCurrentAbandonLvl] = useState(null);
             const [modalData, setModalData] = useState({ title: '', score: 0, wrongList: [] });
 
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [scene, showResultModal, showRulesModal, showAbandonModal]);
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [scene, showResultModal, showRulesModal, showAbandonModal, showProfileConfirm]);
 
             const startLobby = () => {
                  if (user.name.toLowerCase() === 'teacher') {
@@ -758,15 +788,6 @@
                  } else { 
                      alert("請完整填寫班級、座號與姓名"); 
                  }
-            };
-
-            const handleImageUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => setCustomImage(e.target.result);
-                    reader.readAsDataURL(file);
-                }
             };
 
             const handleLevelFinish = (lvl, rawScore, wrongList) => {
@@ -810,8 +831,18 @@
 
             const closeResultModal = () => {
                 setShowResultModal(false);
-                if (modalData.title.includes("狀元試")) setScene('result');
-                else setScene('lobby');
+                // 修正邏輯：如果是狀元試結束，先顯示個人資料確認視窗
+                if (modalData.title.includes("狀元試")) {
+                    setShowProfileConfirm(true);
+                } else {
+                    setScene('lobby');
+                }
+            };
+            
+            // 新增：處理個人資料確認後進入結果頁
+            const handleProfileConfirm = () => {
+                setShowProfileConfirm(false);
+                setScene('result');
             };
 
             const getAvgScore = () => Math.round((progress[1].score + progress[2].score + progress[3].score) / 3);
@@ -856,23 +887,34 @@
                                 {user.classNo} 班 {user.seatNo} 號 - {user.name}
                             </span>
                         </div>
-                        <div className="text-right text-sm">
-                            <p>平均成績：<span className="font-bold text-vermilion text-lg">{getAvgScore()}</span> 分</p>
-                            <p className="text-xs text-gray-400">目標：80分以上解鎖「最終挑戰」</p>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right text-sm">
+                                <p>平均成績：<span className="font-bold text-vermilion text-lg">{getAvgScore()}</span> 分</p>
+                                <p className="text-xs text-gray-400">目標：80分以上解鎖「最終挑戰」</p>
+                            </div>
+                            {/* 新增：回首頁按鈕 */}
+                            <button onClick={() => { if(confirm("確定要登出並回到首頁嗎？進度可能會遺失。")) setScene('onboarding'); }} className="ml-2 p-2 rounded-full hover:bg-stone-100 text-stone-500 transition" title="回首頁/登出">
+                                <Icon name="home" size={20} />
+                            </button>
                         </div>
                     </header>
 
                     <div className="grid md:grid-cols-3 gap-6">
                         <div className="md:col-span-1">
-                            <div className="bg-white p-4 rounded-xl shadow-lg border-4 border-stone-800 relative overflow-hidden text-center">
-                                <h2 className="text-xl font-bold mb-4 font-serif text-stone-800">沈三白 像</h2>
-                                <div className="w-full h-48 bg-stone-100 mx-auto mb-4 rounded border-2 border-stone-200 flex items-center justify-center overflow-hidden relative">
-                                    {customImage ? <img src={customImage} className="w-full h-full object-cover" /> : <img src={TEACHER_CONFIG.shenFuImage} className="w-full h-full object-cover opacity-80" alt="沈復" />}
+                            {/* 修正：沈復個人資料卡 */}
+                            <div className="bg-white p-6 rounded-xl shadow-lg border-4 border-stone-800 relative overflow-hidden text-left">
+                                <h2 className="text-2xl font-bold mb-4 font-serif text-stone-800 border-b-2 border-stone-200 pb-2">沈三白</h2>
+                                <div className="flex flex-col gap-3">
+                                    <div className="w-full h-40 bg-stone-100 rounded border-2 border-stone-200 mb-2 overflow-hidden">
+                                         {customImage ? <img src={customImage} className="w-full h-full object-cover" /> : <img src={TEACHER_CONFIG.shenFuImage} className="w-full h-full object-cover opacity-90" alt="沈復" />}
+                                    </div>
+                                    <div className="text-sm text-stone-700 space-y-2">
+                                        <p><span className="font-bold text-tea-brown">字號：</span>字三白，號梅逸</p>
+                                        <p><span className="font-bold text-tea-brown">生平：</span>清代蘇州人，工詩善畫，情感真摯。</p>
+                                        <p><span className="font-bold text-tea-brown">眷屬：</span>妻 陳芸</p>
+                                        <p><span className="font-bold text-tea-brown">著作：</span>《浮生六記》</p>
+                                    </div>
                                 </div>
-                                <label className="cursor-pointer bg-stone-200 hover:bg-stone-300 px-3 py-1 rounded text-xs text-stone-600 block mb-2">
-                                    更換頭像
-                                    <input type="file" accept="image/*" onChange={handleImageUpload} />
-                                </label>
                             </div>
                         </div>
 
@@ -906,6 +948,7 @@
                     {showRulesModal && <RulesModal onConfirm={() => setShowRulesModal(false)} />}
                     {showResultModal && <LevelResultModal {...modalData} onConfirm={closeResultModal} />}
                     {showAbandonModal && <AbandonModal onConfirm={confirmAbandon} onCancel={() => setShowAbandonModal(false)} />}
+                    {showProfileConfirm && <ProfileConfirmModal user={user} setUser={setUser} onConfirm={handleProfileConfirm} />}
 
                     {scene === 'onboarding' && <Onboarding user={user} setUser={setUser} onStart={startLobby} />}
                     {scene === 'teacher' && <TeacherDashboard onBack={() => setScene('onboarding')} />}
@@ -922,6 +965,8 @@
                                 <h2 className="text-2xl font-bold mb-4 text-ink-black">恭喜完成學業！</h2>
                                 <div className="text-6xl font-black text-tea-brown mb-2">{progress[4].score}</div>
                                 <p className="text-gray-500 mb-6">最終測驗分數</p>
+                                {/* 顯示最終確認的姓名，確保成績單無誤 */}
+                                <p className="text-sm text-gray-400 mb-2">考生：{user.classNo}班 {user.seatNo}號 {user.name}</p>
                                 <button onClick={generateReport} className="w-full btn-classical justify-center text-lg py-3 mb-3 bg-bamboo-green hover:bg-green-700">
                                     <Icon name="copy" /> 複製成績驗證碼 (繳交作業)
                                 </button>
