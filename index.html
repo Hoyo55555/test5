@@ -107,12 +107,9 @@
         // ==========================================
         const TEACHER_CONFIG = {
             // 設定 1：NPC 老夫子圖片路徑
-            // 請確認您的 GitHub 上的資料夾名稱與檔名大小寫完全一致
-            // 範例："image/npc_master.png" 或 "https://raw.githubusercontent.com/.../image.jpg"
-            npcImage: "image/老夫子.jpeg", 
+            npcImage: "image/老夫子.jpg", 
 
             // 設定 2：沈復圖片路徑
-            // 範例："test4/image/沈復.jpeg"
             shenFuImage: "image/沈復陳芸.jpeg"
         };
         // ==========================================
@@ -166,7 +163,7 @@
             }
         };
 
-        // --- 資料庫 (題庫) ---
+        // --- 資料庫 (修正版) ---
         const POOL_LEVEL1 = [
             { char: '藐', pinyin: 'ㄇㄧㄠˇ', mean: '微小', desc: '藐小微物' },
             { char: '壑', pinyin: 'ㄏㄨㄛˋ', mean: '山谷', desc: '凹者為壑' }, 
@@ -174,7 +171,7 @@
             { char: '礫', pinyin: 'ㄌㄧˋ', mean: '小石子', desc: '土礫' },
             { char: '擬', pinyin: 'ㄋㄧˇ', mean: '比擬', desc: '私擬作' },
             { char: '強', pinyin: 'ㄐㄧㄤˋ', mean: '僵硬', desc: '項為之強' }, 
-            { char: '唳', pinyin: 'ㄌㄧˋ', mean: '鳥類高聲鳴叫', desc: '鶴唳雲端' },
+            { char: '唳', pinyin: 'ㄌㄧˋ', mean: '鳥鳴', desc: '鶴唳雲端' },
             { char: '怡', pinyin: 'ㄧˊ', mean: '喜悅', desc: '怡然稱快' },
             { char: '稚', pinyin: 'ㄓˋ', mean: '幼小', desc: '童稚' },
             { char: '昂', pinyin: 'ㄤˊ', mean: '抬頭', desc: '昂首觀之' },
@@ -183,9 +180,10 @@
             { char: '察', pinyin: 'ㄔㄚˊ', mean: '觀察', desc: '明察秋毫' },
             { char: '叢', pinyin: 'ㄘㄨㄥˊ', mean: '繁雜', desc: '叢草' },
             { char: '凹', pinyin: 'ㄠ', mean: '低陷', desc: '凹者為壑' },
-            { char: '凸', pinyin: 'ㄊㄨ', mean: '高起', desc: '凸者為丘' },
+            { char: '凸', pinyin: 'ㄊㄨˊ', mean: '高起', desc: '凸者為丘' }, // 修正注音
             { char: '憶', pinyin: 'ㄧˋ', mean: '回想', desc: '余憶童稚時' },
             { char: '毫', pinyin: 'ㄏㄠˊ', mean: '細毛', desc: '秋毫' }
+            // 已刪除：癩、雷
         ];
 
         const POOL_LEVEL2 = [
@@ -318,7 +316,7 @@
             </div>
         );
 
-        // --- 個人資訊確認 Modal (新增) ---
+        // --- 個人資訊確認 Modal ---
         const ProfileConfirmModal = ({ user, setUser, onConfirm }) => (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] animate-fadeIn p-4">
                 <div className="bg-white rounded-xl shadow-2xl max-w-md w-full border-4 border-tea-brown p-8">
@@ -347,29 +345,39 @@
             </div>
         );
 
-        // --- 關卡 1: 形音義 ---
+        // --- 關卡 1: 形音義 (修正：鎖定機制 + 防錯) ---
         const Level1_Words = ({ onFinish, onAbandon, hasPenalty }) => {
             const [questions, setQuestions] = useState([]);
             const [idx, setIdx] = useState(0);
             const [userAnswers, setUserAnswers] = useState([]);
             const [showPenalty, setShowPenalty] = useState(hasPenalty);
+            const [isLocked, setIsLocked] = useState(false); // 鎖定狀態
             
             useEffect(() => {
-                setQuestions(getRandomItems(POOL_LEVEL1, 5));
+                const items = getRandomItems(POOL_LEVEL1, 5);
+                setQuestions(items);
             }, []);
 
             if (showPenalty) {
                 return <PenaltyNotice onConfirm={() => setShowPenalty(false)} />;
             }
+            
+            // 安全性檢查：確保題目已載入
+            if (!questions || questions.length === 0) return <div className="p-8 text-center text-gray-500">載入考卷中...</div>;
 
             const currentItem = questions[idx];
-            const options = React.useMemo(() => {
-                if (!currentItem) return [];
+            // 防止 currentItem 為空 (雖然有 length 檢查，但雙重保險)
+            if (!currentItem) return <div className="p-8 text-center text-gray-500">題目載入錯誤，請重新整理</div>;
+
+            const options = (() => {
                 const wrong = POOL_LEVEL1.filter(i => i.mean !== currentItem.mean).sort(() => 0.5 - Math.random()).slice(0, 3).map(i => i.mean);
                 return [...wrong, currentItem.mean].sort(() => 0.5 - Math.random());
-            }, [currentItem]);
+            })();
 
             const handleSelect = (meaning) => {
+                if (isLocked) return; // 鎖定中，不執行
+                setIsLocked(true); // 鎖定
+
                 const currentQ = questions[idx];
                 const isCorrect = currentQ.mean === meaning;
                 
@@ -388,9 +396,14 @@
                 else playSound('wrong');
 
                 if (idx + 1 < questions.length) {
-                    setTimeout(() => setIdx(idx + 1), 500);
+                    setTimeout(() => {
+                        setIdx(idx + 1);
+                        setIsLocked(false); // 解鎖
+                    }, 500);
                 } else {
-                    finishGame(newUserAnswers);
+                    setTimeout(() => {
+                        finishGame(newUserAnswers);
+                    }, 500);
                 }
             };
 
@@ -400,8 +413,6 @@
                 const wrongList = answers.filter(a => !a.isCorrect);
                 onFinish(score, wrongList);
             };
-
-            if (!currentItem) return <div>載入中...</div>;
 
             return (
                 <div className="p-6 relative h-full flex flex-col">
@@ -422,7 +433,12 @@
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         {options.map((opt, i) => (
-                            <button key={i} onClick={() => handleSelect(opt)} className="p-4 bg-stone-100 hover:bg-tea-brown hover:text-white rounded text-xl font-bold transition border border-stone-200 shadow-sm">
+                            <button 
+                                key={i} 
+                                onClick={() => handleSelect(opt)} 
+                                disabled={isLocked}
+                                className={`p-4 rounded text-xl font-bold transition border shadow-sm ${isLocked ? 'bg-gray-100 cursor-not-allowed opacity-70' : 'bg-stone-100 hover:bg-tea-brown hover:text-white border-stone-200'}`}
+                            >
                                 {opt}
                             </button>
                         ))}
@@ -431,12 +447,13 @@
             );
         };
 
-        // --- 關卡 2: 字義偵探 ---
+        // --- 關卡 2: 字義偵探 (修正：鎖定機制) ---
         const Level2_Investigator = ({ onFinish, onAbandon, hasPenalty }) => {
             const [questions, setQuestions] = useState([]);
             const [idx, setIdx] = useState(0);
             const [userAnswers, setUserAnswers] = useState([]);
             const [showPenalty, setShowPenalty] = useState(hasPenalty);
+            const [isLocked, setIsLocked] = useState(false);
 
             useEffect(() => {
                 setQuestions(getRandomItems(POOL_LEVEL2, 10));
@@ -445,8 +462,13 @@
             if (showPenalty) {
                 return <PenaltyNotice onConfirm={() => setShowPenalty(false)} />;
             }
+            
+            if (!questions || questions.length === 0) return <div className="p-8 text-center text-gray-500">載入考卷中...</div>;
 
             const handleAns = (opt) => {
+                if (isLocked) return;
+                setIsLocked(true);
+
                 const q = questions[idx];
                 const isCorrect = opt === q.ans;
                 const record = { q: q.text, userAns: opt, correctAns: q.ans, isCorrect, hint: q.hint };
@@ -456,16 +478,22 @@
                 if (isCorrect) playSound('correct');
                 else playSound('wrong');
 
-                if (idx + 1 < questions.length) setTimeout(() => setIdx(idx + 1), 500);
-                else {
-                    const correctCount = newAns.filter(a => a.isCorrect).length;
-                    const score = (correctCount / 10) * 100;
-                    onFinish(score, newAns.filter(a => !a.isCorrect));
+                if (idx + 1 < questions.length) {
+                    setTimeout(() => {
+                        setIdx(idx + 1);
+                        setIsLocked(false);
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        const correctCount = newAns.filter(a => a.isCorrect).length;
+                        const score = (correctCount / 10) * 100;
+                        onFinish(score, newAns.filter(a => !a.isCorrect));
+                    }, 500);
                 }
             };
 
-            if (questions.length === 0) return <div>載入中...</div>;
             const q = questions[idx];
+            if (!q) return <div className="p-8 text-center text-gray-500">題目載入錯誤</div>;
 
             return (
                 <div className="p-6 relative h-full flex flex-col">
@@ -483,7 +511,12 @@
                         <p className="text-gray-600 mb-6 text-lg">請問「{q.word}」在此處的意思是？</p>
                         <div className="flex flex-wrap justify-center gap-4">
                             {q.options.map((opt, i) => (
-                                <button key={i} onClick={() => handleAns(opt)} className="px-6 py-3 bg-bamboo-green text-white rounded-full hover:bg-green-700 transition shadow-lg text-lg">
+                                <button 
+                                    key={i} 
+                                    onClick={() => handleAns(opt)} 
+                                    disabled={isLocked}
+                                    className={`px-6 py-3 rounded-full transition shadow-lg text-lg ${isLocked ? 'bg-gray-300 cursor-not-allowed text-white' : 'bg-bamboo-green text-white hover:bg-green-700'}`}
+                                >
                                     {opt}
                                 </button>
                             ))}
@@ -569,12 +602,13 @@
             );
         };
 
-        // --- 最終挑戰 ---
+        // --- 最終挑戰 (修正：鎖定機制) ---
         const FinalQuiz = ({ onFinish, onAbandon, hasPenalty }) => {
             const [questions, setQuestions] = useState([]);
             const [idx, setIdx] = useState(0);
             const [userAnswers, setUserAnswers] = useState([]);
             const [showPenalty, setShowPenalty] = useState(hasPenalty);
+            const [isLocked, setIsLocked] = useState(false);
 
             useEffect(() => {
                 setQuestions(getRandomItems(POOL_LEVEL4, 10));
@@ -584,7 +618,12 @@
                 return <PenaltyNotice onConfirm={() => setShowPenalty(false)} />;
             }
 
+            if (!questions || questions.length === 0) return <div className="p-8 text-center text-gray-500">載入考卷中...</div>;
+
             const handleAns = (idxOpt) => {
+                if (isLocked) return;
+                setIsLocked(true);
+
                 const q = questions[idx];
                 const isCorrect = idxOpt === q.ans;
                 const record = { 
@@ -600,16 +639,22 @@
                 if (isCorrect) playSound('correct');
                 else playSound('wrong');
 
-                if (idx + 1 < questions.length) setTimeout(() => setIdx(idx + 1), 500);
-                else {
-                    const correctCount = newAns.filter(a => a.isCorrect).length;
-                    const score = (correctCount / 10) * 100;
-                    onFinish(score, newAns.filter(a => !a.isCorrect));
+                if (idx + 1 < questions.length) {
+                    setTimeout(() => {
+                        setIdx(idx + 1);
+                        setIsLocked(false);
+                    }, 500);
+                } else {
+                    setTimeout(() => {
+                        const correctCount = newAns.filter(a => a.isCorrect).length;
+                        const score = (correctCount / 10) * 100;
+                        onFinish(score, newAns.filter(a => !a.isCorrect));
+                    }, 500);
                 }
             };
 
-            if (questions.length === 0) return <div>載入中...</div>;
             const q = questions[idx];
+            if (!q) return <div className="p-8 text-center text-gray-500">題目載入錯誤</div>;
 
             return (
                 <div className="p-6 relative h-full flex flex-col">
@@ -625,7 +670,12 @@
                     </div>
                     <div className="grid gap-3">
                         {q.options.map((opt, i) => (
-                            <button key={i} onClick={() => handleAns(i)} className="text-left p-4 rounded-lg border-2 transition-all font-bold text-gray-700 bg-white hover:bg-orange-50 border-stone-200">
+                            <button 
+                                key={i} 
+                                onClick={() => handleAns(i)} 
+                                disabled={isLocked}
+                                className={`text-left p-4 rounded-lg border-2 transition-all font-bold text-gray-700 bg-white border-stone-200 ${isLocked ? 'cursor-not-allowed bg-gray-50' : 'hover:bg-orange-50'}`}
+                            >
                                 {opt}
                             </button>
                         ))}
@@ -677,22 +727,16 @@
 
             const handleParse = () => {
                 try {
-                    // 解析極簡 Base64 格式：[驗證碼: <Base64>]
-                    // 內容格式：Class_Seat_Name_Score (使用底線分隔)
-                    // 範例：701_05_王小明_95
-                    
                     const match = inputCode.match(/\[驗證碼:\s*([A-Za-z0-9+/=]+)\]/);
                     if (!match || !match[1]) throw new Error("格式錯誤，找不到驗證碼");
                     
                     const rawString = decodeURIComponent(escape(atob(match[1])));
                     const parts = rawString.split('_');
 
-                    // 檢查格式 (至少要有 4 個部分：班級、座號、姓名、分數)
                     if (parts.length < 4) throw new Error("資料損毀");
                     
                     const classNo = parts[0];
                     const seatNo = parts[1];
-                    // 姓名可能包含底線，所以取中間部分
                     const score = parseInt(parts[parts.length - 1]);
                     const name = parts.slice(2, parts.length - 1).join('_');
                     
@@ -768,7 +812,7 @@
             const [showResultModal, setShowResultModal] = useState(false);
             const [showRulesModal, setShowRulesModal] = useState(false);
             const [showAbandonModal, setShowAbandonModal] = useState(false);
-            const [showProfileConfirm, setShowProfileConfirm] = useState(false); // 新增：個人資料確認視窗狀態
+            const [showProfileConfirm, setShowProfileConfirm] = useState(false);
             const [currentAbandonLvl, setCurrentAbandonLvl] = useState(null);
             const [modalData, setModalData] = useState({ title: '', score: 0, wrongList: [] });
 
@@ -794,7 +838,6 @@
                 let finalScore = Math.round(rawScore);
                 let detailsMsg = "";
                 
-                // 結算時扣除懲罰分數
                 if (progress[lvl].penalty) {
                     finalScore = Math.max(0, finalScore - 10);
                     detailsMsg = "(已扣除懲罰 10 分)";
@@ -811,13 +854,11 @@
                 setShowResultModal(true);
             };
 
-            // 觸發放棄確認視窗
             const triggerAbandon = (lvl) => {
                 setCurrentAbandonLvl(lvl);
                 setShowAbandonModal(true);
             };
 
-            // 確定放棄邏輯
             const confirmAbandon = () => {
                 if (currentAbandonLvl) {
                     setProgress(prev => ({ 
@@ -831,7 +872,6 @@
 
             const closeResultModal = () => {
                 setShowResultModal(false);
-                // 修正邏輯：如果是狀元試結束，先顯示個人資料確認視窗
                 if (modalData.title.includes("狀元試")) {
                     setShowProfileConfirm(true);
                 } else {
@@ -839,7 +879,6 @@
                 }
             };
             
-            // 新增：處理個人資料確認後進入結果頁
             const handleProfileConfirm = () => {
                 setShowProfileConfirm(false);
                 setScene('result');
@@ -848,12 +887,9 @@
             const getAvgScore = () => Math.round((progress[1].score + progress[2].score + progress[3].score) / 3);
             const canUnlockFinal = () => progress[1].done && progress[2].done && progress[3].done && getAvgScore() >= 80;
 
-            // 修正：產生 Base64 驗證碼 (包含學生資訊)
             const generateReport = () => {
                 const score = progress[4].score;
-                // 格式：班級_座號_姓名_分數
                 const rawString = `${user.classNo}_${user.seatNo}_${user.name}_${score}`;
-                // 編碼
                 const code = btoa(unescape(encodeURIComponent(rawString)));
                 const formattedCode = `[驗證碼: ${code}]`;
 
@@ -892,7 +928,6 @@
                                 <p>平均成績：<span className="font-bold text-vermilion text-lg">{getAvgScore()}</span> 分</p>
                                 <p className="text-xs text-gray-400">目標：80分以上解鎖「最終挑戰」</p>
                             </div>
-                            {/* 新增：回首頁按鈕 */}
                             <button onClick={() => { if(confirm("確定要登出並回到首頁嗎？進度可能會遺失。")) setScene('onboarding'); }} className="ml-2 p-2 rounded-full hover:bg-stone-100 text-stone-500 transition" title="回首頁/登出">
                                 <Icon name="home" size={20} />
                             </button>
@@ -901,7 +936,6 @@
 
                     <div className="grid md:grid-cols-3 gap-6">
                         <div className="md:col-span-1">
-                            {/* 修正：沈復個人資料卡 */}
                             <div className="bg-white p-6 rounded-xl shadow-lg border-4 border-stone-800 relative overflow-hidden text-left">
                                 <h2 className="text-2xl font-bold mb-4 font-serif text-stone-800 border-b-2 border-stone-200 pb-2">沈三白</h2>
                                 <div className="flex flex-col gap-3">
@@ -965,7 +999,6 @@
                                 <h2 className="text-2xl font-bold mb-4 text-ink-black">恭喜完成學業！</h2>
                                 <div className="text-6xl font-black text-tea-brown mb-2">{progress[4].score}</div>
                                 <p className="text-gray-500 mb-6">最終測驗分數</p>
-                                {/* 顯示最終確認的姓名，確保成績單無誤 */}
                                 <p className="text-sm text-gray-400 mb-2">考生：{user.classNo}班 {user.seatNo}號 {user.name}</p>
                                 <button onClick={generateReport} className="w-full btn-classical justify-center text-lg py-3 mb-3 bg-bamboo-green hover:bg-green-700">
                                     <Icon name="copy" /> 複製成績驗證碼 (繳交作業)
